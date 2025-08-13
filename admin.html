@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Managing Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary-dark: #1a2a44;
+            --primary-light: #ffffff;
+            --accent: #3b5998;
+            --text: #333333;
+            --border: #e0e0e0;
+            --success: #28a745;
+            --error: #dc3545;
+            --warning: #ffc107;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            --header-height: 60px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--primary-light);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Enhanced Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, #2d4366 100%);
+            color: var(--primary-light);
+            padding: 0 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            z-index: 1000;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+        }
+
+        .header.show {
+            display: flex;
+        }
+
+        .user-info {
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+        }
+
+        .user-info i {
+            font-size: 16px;
+        }
+
+        /* Mobile-optimized Navigation Toggle */
+        .nav-toggle {
+            display: none;
+            font-size: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: var(--primary-light);
+            cursor: pointer;
+            padding: 10px;
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .nav-toggle:active {
+            transform: scale(0.95);
+        }
+
+        /* Enhanced Desktop sidebar */
+        .sidebar {
+            background: linear-gradient(180deg, var(--primary-dark) 0%, #2d4366 100%);
+            width: 280px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            padding: 80px 0 20px;
+            display: none;
+            z-index: 999;
+            box-shadow: var(--shadow);
+            overflow-y: auto;
+        }
+
+        .sidebar.show {
+            display: block;
+        }
+
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .sidebar li {
+            margin: 8px 15px;
+        }
+
+        .sidebar a {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s ease;
+            border-radius: 12px;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar a::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent);
+            transform: scaleY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar a i {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .sidebar a:hover,
+        .sidebar a.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            transform: translateX(8px);
+        }
+
+        .sidebar a:hover::before,
+        .sidebar a.active::before {
+            transform: scaleY(1);
+        }
+
+        /* Enhanced Main content area */
+        .main-content {
+            margin-left: 0;
+            padding-top: var(--header-height);
+            transition: all 0.3s ease;
+            min-height: 100vh;
+        }
+
+        .main-content.with-sidebar {
+            margin-left: 280px;
+        }
+
+        .section {
+            background: var(--primary-light);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+            border: 1px solid var(--border);
+        }
+
+        h1 {
+            color: var(--primary-dark);
+            text-align: center;
+            margin: 20px 0 40px;
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        h2, h3 {
+            color: var(--primary-dark);
+            text-align: center;
+            margin-bottom: 24px;
+            font-weight: 600;
+        }
+
+        /* Enhanced Form Elements */
+        input, button {
+            display: block;
+            margin: 15px auto;
+            padding: 16px;
+            width: 100%;
+            max-width: 420px;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            font-size: 16px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 89, 152, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .login-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            width: 100%;
+            max-width: 420px;
+            margin: 20px auto;
+        }
+
+        .login-buttons button {
+            margin: 0;
+            flex: 1;
+        }
+
+        button {
+            background: linear-gradient(135deg, var(--accent) 0%, #2d4373 100%);
+            color: var(--primary-light);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(59, 89, 152, 0.3);
+        }
+
+        button:active {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #reset-elections {
+            background: linear-gradient(135deg, var(--error) 0%, #c82333 100%);
+        }
+
+        #reset-elections:hover {
+            box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
+        }
+
+        /* Enhanced Cards and Lists */
+        .candidate, .voter-item {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .candidate:hover, .voter-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            border-color: var(--accent);
+        }
+
+        .candidate img {
+            max-width: 90px;
+            max-height: 90px;
+            margin-right: 20px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 3px solid var(--border);
+        }
+        
+        .voter-item div {
+            flex-grow: 1;
+            padding-left: 15px;
+        }
+
+        .error, .success {
+            color: var(--error);
+            text-align: center;
+            margin: 15px 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            font-weight: 500;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        .success {
+            color: var(--success);
+            background: rgba(40, 167, 69, 0.1);
+        }
+
+        .list-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 2px solid var(--border);
+            padding: 20px;
+            border-radius: 16px;
+            background: #fafbfc;
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 30px;
+            font-style: italic;
+        }
+
+        /* Enhanced Mobile overlay */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 998;
+            backdrop-filter: blur(4px);
+        }
+
+        .sidebar-overlay.show {
+            display: block;
+        }
+
+        /* Dashboard Cards */
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .dashboard-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dashboard-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            transform: rotate(45deg);
+            transition: transform 0.5s ease;
+        }
+
+        .dashboard-card:hover::before {
+            transform: rotate(45deg) translate(-20%, -20%);
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .dashboard-card i {
+            font-size: 32px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .dashboard-card h4 {
+            margin-bottom: 10px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .dashboard-card p {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        /* Enhanced Mobile Styles */
+        @media (max-width: 768px) {
+            :root {
+                --header-height: 56px;
+            }
+
+            .nav-toggle {
+                display: block;
+                position: absolute;
+                left: 15px;
+                top: 50%;
+                transform: translateY(-50%);
+            }
+
+            .header {
+                padding: 0 70px 0 15px;
+                height: var(--header-height);
+            }
+
+            .user-info {
+                position: absolute;
+                right: 15px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: 13px;
+            }
+
+            .sidebar {
+                width: 300px;
+                transform: translateX(-100%);
+                transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                padding-top: var(--header-height);
+                border-top-right-radius: 20px;
+                border-bottom-right-radius: 20px;
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content.with-sidebar {
+                margin-left: 0;
+            }
+
+            .container {
+                padding: 20px 15px;
+            }
+
+            .section {
+                padding: 25px 20px;
+                border-radius: 20px;
+            }
+
+            .candidate, .voter-item {
+                flex-direction: column;
+                text-align: center;
+                padding: 25px;
+            }
+
+            .candidate img {
+                margin: 0 0 20px 0;
+                max-width: 100px;
+                max-height: 100px;
+            }
+
+            .voter-item {
+                align-items: center;
+            }
+
+            .voter-item div {
+                padding-left: 0;
+                width: 100%;
+                text-align: center;
+                margin-bottom: 15px;
+            }
+
+            h1 {
+                font-size: 28px;
+                margin: 15px 0 30px;
+            }
+
+            h2 {
+                font-size: 22px;
+            }
+
+            h3 {
+                font-size: 20px;
+            }
+
+            input, button {
+                font-size: 16px;
+                padding: 18px;
+                border-radius: 14px;
+            }
+
+            .login-buttons {
+                flex-direction: column;
+                gap: 12px;
+                max-width: 100%;
+            }
+
+            .dashboard-cards {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .dashboard-card {
+                padding: 25px 20px;
+            }
+
+            .list-container {
+                max-height: 300px;
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px 10px;
+            }
+
+            .section {
+                padding: 20px 15px;
+                margin-bottom: 20px;
+            }
+
+            .sidebar {
+                width: calc(100vw - 40px);
+                max-width: 320px;
+            }
+
+            input, button {
+                padding: 16px;
+                margin: 12px auto;
+            }
+
+            .candidate, .voter-item {
+                padding: 20px 15px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .dashboard-card {
+                padding: 20px 15px;
+            }
+
+            .dashboard-card i {
+                font-size: 28px;
+            }
+
+            .dashboard-card p {
+                font-size: 28px;
+            }
+        }
+
+        /* Touch-friendly enhancements */
+        @media (hover: none) and (pointer: coarse) {
+            button {
+                min-height: 48px;
+            }
+
+            .nav-toggle {
+                min-width: 48px;
+                min-height: 48px;
+            }
+
+            .sidebar a {
+                min-height: 48px;
+                padding: 16px 20px;
+            }
+
+            input {
+                min-height: 48px;
+            }
+        }
+
+        /* Landscape mobile optimizations */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .sidebar {
+                width: 280px;
+            }
+
+            .dashboard-cards {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+        }
+
+        /* High DPI display optimizations */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+            .sidebar, .header {
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .status-active {
+            background: rgba(40, 167, 69, 0.2);
+            color: var(--success);
+        }
+
+        .status-ended {
+            background: rgba(220, 53, 69, 0.2);
+            color: var(--error);
+        }
+
+        .status-preparing {
+            background: rgba(255, 193, 7, 0.2);
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="header" id="header">
+        <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="user-info">
+            <i class="fas fa-user-shield"></i>
+            <span id="director-name">Director</span>
+        </div>
+    </div>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    
+    <nav class="sidebar" id="sidebar" role="navigation">
+        <ul>
+            <li><a href="#" class="tab-link active" data-tab="home-section"><i class="fas fa-home"></i> Home</a></li>
+            <li><a href="#" class="tab-link" data-tab="deadline-section"><i class="fas fa-clock"></i> Deadline</a></li>
+            <li><a href="#" class="tab-link" data-tab="candidates-section"><i class="fas fa-users"></i> Candidates</a></li>
+            <li><a href="#" class="tab-link" data-tab="voters-section"><i class="fas fa-user-plus"></i> Voters</a></li>
+            <li><a href="#" class="tab-link" data-tab="admins-section"><i class="fas fa-user-shield"></i> Admins</a></li>
+            <li><a href="#" class="tab-link" data-tab="results-section"><i class="fas fa-chart-bar"></i> Results</a></li>
+        </ul>
+    </nav>
+
+    <div class="main-content" id="main-content">
+        <div class="container">
+            <h1>Managing Portal</h1>
+            
+            <div id="login-section" class="section">
+                <h2>Election Director Login</h2>
+                <input type="text" id="director-username" placeholder="Username" autocomplete="username">
+                <div style="position: relative; max-width: 420px; margin: 15px auto;">
+                    <input type="password" id="director-password" placeholder="Password" style="margin: 0; padding-right: 55px;" autocomplete="current-password">
+                    <span id="toggle-director-password" style="position: absolute; right: 18px; top: 18px; cursor: pointer; color: #666; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-eye"></i></span>
+                </div>
+                <div class="login-buttons">
+                    <button onclick="loginDirector()">Login</button>
+                </div>
+                <p id="login-error" class="error"></p>
+            </div>
+
+            <div id="home-section" class="section" style="display: none;">
+                <h2>Election Dashboard</h2>
+                
+                <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 25px; border-radius: 16px; margin-bottom: 30px; border: 2px solid var(--accent); position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: -10px; right: -10px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(59, 89, 152, 0.1) 0%, transparent 70%); border-radius: 50%;"></div>
+                    <h3 style="color: var(--primary-dark); margin-bottom: 20px; text-align: left; display: flex; align-items: center; gap: 12px;">
+                        <i class="fas fa-info-circle" style="color: var(--accent);"></i> Election Status
+                    </h3>
+                    <div id="election-status" style="font-size: 16px; line-height: 2;">
+                        <p id="status-text" style="margin-bottom: 15px;"><strong>Status:</strong> <span id="status-indicator" class="status-indicator status-preparing">Preparing</span></p>
+                        <p id="deadline-text" style="margin-bottom: 15px;"><strong>Deadline:</strong> <span id="current-deadline">Not set</span></p>
+                        <p id="time-remaining" style="margin-bottom: 0;"><strong>Time Remaining:</strong> <span id="countdown">--</span></p>
+                    </div>
+                </div>
+
+                <div class="dashboard-cards">
+                    <div class="dashboard-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <i class="fas fa-users"></i>
+                        <h4>Candidates</h4>
+                        <p id="candidates-count">0</p>
+                    </div>
+                    <div class="dashboard-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <i class="fas fa-user-check"></i>
+                        <h4>Registered Voters</h4>
+                        <p id="registered-voters-count">0</p>
+                    </div>
+                    <div class="dashboard-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <i class="fas fa-vote-yea"></i>
+                        <h4>Votes Cast</h4>
+                        <p id="votes-cast-count">0</p>
+                    </div>
+                </div>
+
+                <div style="text-align: center;">
+                    <button onclick="refreshDashboard()" style="margin: 0 auto; max-width: 300px;">
+                        <i class="fas fa-sync-alt"></i> Refresh Dashboard
+                    </button>
+                </div>
+            </div>
+
+            <div id="deadline-section" class="section" style="display: none;">
+                <h2>Set Voting Deadline</h2>
+                <input type="datetime-local" id="voting-deadline">
+                <button onclick="setDeadline()">Set Deadline</button>
+                <p id="deadline-status" class="error"></p>
+                <hr style="margin: 30px auto; max-width: 420px; border: 1px solid var(--border);">
+                <button id="reset-elections" onclick="resetElections()">Reset Elections</button>
+            </div>
+
+            <div id="candidates-section" class="section" style="display: none;">
+                <h2>Manage Candidates</h2>
+                <h3>Add Candidate</h3>
+                <input type="text" id="candidate-name" placeholder="Candidate Name">
+                <input type="text" id="candidate-position" placeholder="Position (e.g., President)">
+                <input type="file" id="candidate-photo" accept="image/*" style="padding: 12px;">
+                <button onclick="addCandidate()">Add Candidate</button>
+                <p id="candidate-error" class="error"></p>
+                <h3>Candidates List</h3>
+                <div id="candidates-list" class="list-container">
+                    <div class="loading">Loading candidates...</div>
+                </div>
+            </div>
+
+            <div id="voters-section" class="section" style="display: none;">
+                <h2>Manage Online Voters</h2>
+                <h3>Add Online Voter</h3>
+                <input type="text" id="voter-username" placeholder="Voter Username">
+                <input type="password" id="voter-password" placeholder="Voter Password">
+                <button onclick="addVoter()">Add Voter</button>
+                <p id="voter-error" class="error"></p>
+                <h3>Registered Voters</h3>
+                <div id="voters-list" class="list-container">
+                    <div class="loading">Loading voters...</div>
+                </div>
+            </div>
+            
+            <div id="admins-section" class="section" style="display: none;">
+                <h2>Manage Admins</h2>
+                <h3>Add New Admin</h3>
+                <input type="text" id="new-admin-username" placeholder="New Admin Username">
+                <div style="position: relative; max-width: 420px; margin: 15px auto;">
+                    <input type="password" id="new-admin-password" placeholder="New Admin Password" style="margin: 0; padding-right: 55px;">
+                    <span id="toggle-new-admin-password" style="position: absolute; right: 18px; top: 18px; cursor: pointer; color: #666; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-eye"></i></span>
+                </div>
+                <button onclick="addAdmin()">Add Admin</button>
+                <p id="admin-add-status" class="error"></p>
+                <h3>Registered Admins</h3>
+                <div id="admins-list" class="list-container">
+                    <div class="loading">Loading admins...</div>
+                </div>
+            </div>
+
+            <div id="results-section" class="section" style="display: none;">
+                <h2>Voting Statistics</h2>
+                <p style="text-align: center; font-size: 20px; margin-bottom: 30px; color: var(--primary-dark); font-weight: 600;">Total Voters: <span id="total-voters" style="color: var(--accent);">0</span></p>
+                <div id="results">
+                    <div class="loading">Loading results...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let supabaseClient = null;
+        let currentUser = null;
+
+        // DOM elements
+        const navToggle = document.getElementById('nav-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const header = document.getElementById('header');
+        const mainContent = document.getElementById('main-content');
+        const tabLinks = document.querySelectorAll('.tab-link');
+        const sections = document.querySelectorAll('.section');
+
+        // Initialize Supabase connection with hardcoded values
+        function initializeSupabase() {
+            const supabaseUrl = 'https://ycjhhdhalisencahifsq.supabase.co';
+            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljamhoZGhhbGlzZW5jYWhpZnNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNjgyMTIsImV4cCI6MjA3MDY0NDIxMn0.wRDFiWOAZWKD8ztSeCE2hKlKndtg1XXa2b6C0HIPI_s';
+            
+            try {
+                supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+                console.log('Supabase initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize Supabase:', error);
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSupabase();
+        });
+
+        // Mobile navigation toggle
+        navToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('show');
+            sidebarOverlay.classList.toggle('show');
+            
+            // Add haptic feedback for mobile devices
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        });
+
+        // Close sidebar when clicking overlay
+        sidebarOverlay.addEventListener('click', () => {
+            sidebar.classList.remove('show');
+            sidebarOverlay.classList.remove('show');
+        });
+
+        // Close sidebar when pressing escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                sidebar.classList.remove('show');
+                sidebarOverlay.classList.remove('show');
+            }
+        });
+
+        // Tab navigation
+        tabLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const tabId = link.getAttribute('data-tab');
+                
+                // Hide all sections
+                sections.forEach(section => {
+                    section.style.display = 'none';
+                });
+                
+                // Remove active class from all tabs
+                tabLinks.forEach(l => l.classList.remove('active'));
+                
+                // Show selected section and activate tab
+                document.getElementById(tabId).style.display = 'block';
+                link.classList.add('active');
+                
+                // Close sidebar on mobile
+                sidebar.classList.remove('show');
+                sidebarOverlay.classList.remove('show');
+                
+                // Scroll to top of content
+                window.scrollTo(0, 0);
+            });
+        });
+
+        // Authentication function
+        async function loginDirector() {
+            if (!supabaseClient) {
+                alert('Supabase connection not initialized');
+                return;
+            }
+
+            const username = document.getElementById('director-username').value.trim();
+            const password = document.getElementById('director-password').value.trim();
+            const loginError = document.getElementById('login-error');
+
+            if (!username || !password) {
+                loginError.textContent = 'Please enter both username and password';
+                loginError.style.opacity = '1';
+                return;
+            }
+
+            try {
+                const { data: directors, error } = await supabaseClient
+                    .from('directors')
+                    .select('*')
+                    .eq('username', username)
+                    .eq('password', password);
+
+                if (error) throw error;
+
+                if (directors && directors.length > 0) {
+                    currentUser = directors[0];
+                    
+                    // Show authenticated interface
+                    document.getElementById('login-section').style.display = 'none';
+                    header.classList.add('show');
+                    sidebar.classList.add('show');
+                    mainContent.classList.add('with-sidebar');
+                    document.getElementById('director-name').textContent = username;
+                    
+                    // Show first tab content
+                    document.getElementById('home-section').style.display = 'block';
+                    
+                    // Update active tab
+                    document.querySelectorAll('.tab-link').forEach(link => link.classList.remove('active'));
+                    document.querySelector('.tab-link[data-tab="home-section"]').classList.add('active');
+                    
+                    // Load data
+                    await loadCandidates();
+                    await loadVoters();
+                    await loadAdmins();
+                    await updateStats();
+                    await loadCurrentDeadline();
+                    await refreshDashboard();
+                    
+                    loginError.style.opacity = '0';
+                } else {
+                    loginError.textContent = 'Invalid username or password';
+                    loginError.style.opacity = '1';
+                }
+            } catch (error) {
+                loginError.textContent = 'Login error: ' + error.message;
+                loginError.style.opacity = '1';
+            }
+        }
+
+        // Load current deadline
+        async function loadCurrentDeadline() {
+            if (!supabaseClient) return;
+
+            try {
+                const { data: settings, error } = await supabaseClient
+                    .from('settings')
+                    .select('value')
+                    .eq('key', 'voting_deadline');
+
+                if (error) throw error;
+
+                const statusElement = document.getElementById('deadline-status');
+                if (settings && settings.length > 0 && settings[0].value) {
+                    const deadline = settings[0].value;
+                    document.getElementById('voting-deadline').value = deadline;
+                    statusElement.textContent = `Current deadline: ${new Date(deadline).toLocaleString()}`;
+                    statusElement.className = 'success';
+                    statusElement.style.opacity = '1';
+                } else {
+                    statusElement.textContent = 'No deadline currently set.';
+                    statusElement.className = 'error';
+                    statusElement.style.opacity = '1';
+                }
+            } catch (error) {
+                console.error('Error loading deadline:', error);
+            }
+        }
+
+        // Set deadline function
+        async function setDeadline() {
+            if (!supabaseClient) return;
+
+            const deadline = document.getElementById('voting-deadline').value;
+            const statusElement = document.getElementById('deadline-status');
+            
+            if (!deadline) {
+                statusElement.textContent = 'Please select a valid date and time';
+                statusElement.className = 'error';
+                statusElement.style.opacity = '1';
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('settings')
+                    .upsert({ key: 'voting_deadline', value: deadline });
+
+                if (error) throw error;
+
+                statusElement.textContent = `Deadline set to: ${new Date(deadline).toLocaleString()}`;
+                statusElement.className = 'success';
+                statusElement.style.opacity = '1';
+                await refreshDashboard();
+            } catch (error) {
+                statusElement.textContent = 'Error setting deadline: ' + error.message;
+                statusElement.className = 'error';
+                statusElement.style.opacity = '1';
+            }
+        }
+
+        async function refreshDashboard() {
+            if (!supabaseClient) return;
+
+            try {
+                // Get deadline
+                const { data: deadlineData } = await supabaseClient
+                    .from('settings')
+                    .select('value')
+                    .eq('key', 'voting_deadline');
+
+                const deadline = deadlineData && deadlineData.length > 0 ? deadlineData[0].value : null;
+
+                // Get candidates count
+                const { count: candidatesCount, error: candidatesError } = await supabaseClient
+                    .from('candidates')
+                    .select('*', { count: 'exact' });
+
+                if (candidatesError) throw candidatesError;
+
+                // Get online voters count
+                const { count: onlineVotersCount, error: votersError } = await supabaseClient
+                    .from('voters')
+                    .select('*', { count: 'exact' });
+
+                if (votersError) throw votersError;
+
+                // Get online votes count (from votes table, which has candidate_id)
+                const { count: onlineVotesCount, error: onlineVotesError } = await supabaseClient
+                    .from('votes')
+                    .select('*', { count: 'exact' });
+
+                if (onlineVotesError) throw onlineVotesError;
+                
+                // Get physical votes count (from physical_votes table)
+                const { count: physicalVotesCount, error: physicalVotesError } = await supabaseClient
+                    .from('physical_votes')
+                    .select('*', { count: 'exact' });
+
+                if (physicalVotesError) throw physicalVotesError;
+                
+                // The number of physical voters is the same as the number of physical votes
+                const physicalVotersCount = physicalVotesCount;
+                const totalRegisteredVoters = onlineVotersCount + physicalVotersCount;
+                const totalVotes = onlineVotesCount + physicalVotesCount;
+
+                // Update counts
+                document.getElementById('candidates-count').textContent = candidatesCount;
+                document.getElementById('registered-voters-count').textContent = totalRegisteredVoters;
+                document.getElementById('votes-cast-count').textContent = totalVotes;
+
+                // Update election status
+                const statusIndicator = document.getElementById('status-indicator');
+                const currentDeadlineSpan = document.getElementById('current-deadline');
+                const countdownSpan = document.getElementById('countdown');
+
+                if (deadline) {
+                    const deadlineDate = new Date(deadline);
+                    const now = new Date();
+                    currentDeadlineSpan.textContent = deadlineDate.toLocaleString();
+
+                    if (now < deadlineDate) {
+                        statusIndicator.textContent = 'Active';
+                        statusIndicator.className = 'status-indicator status-active';
+                        statusIndicator.innerHTML = '<i class="fas fa-play-circle"></i> Active';
+                        
+                        const timeDiff = deadlineDate - now;
+                        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+                        const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+                        
+                        if (days > 0) {
+                            countdownSpan.textContent = `${days}d ${hours}h ${minutes}m`;
+                        } else if (hours > 0) {
+                            countdownSpan.textContent = `${hours}h ${minutes}m`;
+                        } else {
+                            countdownSpan.textContent = `${minutes}m`;
+                        }
+                    } else {
+                        statusIndicator.textContent = 'Ended';
+                        statusIndicator.className = 'status-indicator status-ended';
+                        statusIndicator.innerHTML = '<i class="fas fa-stop-circle"></i> Ended';
+                        countdownSpan.textContent = 'Election has ended';
+                    }
+                } else {
+                    statusIndicator.textContent = 'Preparing';
+                    statusIndicator.className = 'status-indicator status-preparing';
+                    statusIndicator.innerHTML = '<i class="fas fa-clock"></i> Preparing';
+                    currentDeadlineSpan.textContent = 'Not set';
+                    countdownSpan.textContent = 'Set deadline to activate';
+                }
+            } catch (error) {
+                console.error('Error refreshing dashboard:', error);
+            }
+        }
+
+
+        // Reset elections function
+        async function resetElections() {
+            if (!supabaseClient) return;
+
+            if (!confirm("Are you sure you want to reset all election data? This cannot be undone.")) {
+                return;
+            }
+
+            try {
+                // Delete all election data
+                await supabaseClient.from('candidates').delete().gte('id', 0);
+                await supabaseClient.from('voters').delete().gte('id', 0);
+                await supabaseClient.from('votes').delete().gte('id', 0);
+                await supabaseClient.from('physical_votes').delete().gte('id', 0);
+                await supabaseClient.from('settings').delete().eq('key', 'voting_deadline');
+                
+                // Reset interface
+                await loadCandidates();
+                await loadVoters();
+                await loadAdmins();
+                await updateStats();
+                document.getElementById('voting-deadline').value = '';
+                document.getElementById('deadline-status').textContent = '';
+                await refreshDashboard();
+                
+                alert('Election data has been reset successfully!');
+            } catch (error) {
+                alert('Error resetting elections: ' + error.message);
+            }
+        }
+
+        async function addCandidate() {
+            if (!supabaseClient) return;
+
+            const name = document.getElementById('candidate-name').value.trim();
+            const position = document.getElementById('candidate-position').value.trim();
+            const photoInput = document.getElementById('candidate-photo');
+            const candidateError = document.getElementById('candidate-error');
+
+            if (!name || !position || !photoInput.files[0]) {
+                candidateError.textContent = 'Please provide name, position, and a photo.';
+                candidateError.className = 'error';
+                candidateError.style.opacity = '1';
+                return;
+            }
+
+            const file = photoInput.files[0];
+            const fileName = `${Date.now()}_${file.name}`;
+            
+            try {
+                // 1. Upload photo to Supabase Storage
+                const { data: uploadData, error: uploadError } = await supabaseClient
+                    .storage
+                    .from('candidate_photos')
+                    .upload(fileName, file);
+
+                if (uploadError) throw uploadError;
+
+                // 2. Get the public URL of the uploaded photo
+                const { data: publicUrlData } = supabaseClient
+                    .storage
+                    .from('candidate_photos')
+                    .getPublicUrl(fileName);
+                    
+                const photoUrl = publicUrlData.publicUrl;
+
+                // 3. Insert candidate data with the photo URL
+                const { error: insertError } = await supabaseClient
+                    .from('candidates')
+                    .insert([{ 
+                        name, 
+                        position, 
+                        photo_url: photoUrl
+                    }]);
+
+                if (insertError) throw insertError;
+                
+                candidateError.textContent = 'Candidate added successfully!';
+                candidateError.className = 'success';
+                candidateError.style.opacity = '1';
+                
+                // Clear form
+                document.getElementById('candidate-name').value = '';
+                document.getElementById('candidate-position').value = '';
+                photoInput.value = '';
+                
+                await loadCandidates();
+                await refreshDashboard();
+            } catch (error) {
+                candidateError.textContent = 'Error adding candidate: ' + error.message;
+                candidateError.className = 'error';
+                candidateError.style.opacity = '1';
+            }
+        }
+        
+        async function loadCandidates() {
+            if (!supabaseClient) return;
+
+            const candidatesList = document.getElementById('candidates-list');
+            candidatesList.innerHTML = '<div class="loading">Loading candidates...</div>';
+            
+            try {
+                const { data: candidates, error } = await supabaseClient
+                    .from('candidates')
+                    .select('*')
+                    .order('created_at', { ascending: true });
+
+                if (error) throw error;
+                
+                if (!candidates || candidates.length === 0) {
+                    candidatesList.innerHTML = '<p style="text-align: center; color: #666;">No candidates added yet.</p>';
+                    return;
+                }
+                
+                candidatesList.innerHTML = '';
+                candidates.forEach(candidate => {
+                    const candidateDiv = document.createElement('div');
+                    candidateDiv.className = 'candidate';
+                    candidateDiv.innerHTML = `
+                        <img src="${candidate.photo_url}" alt="${candidate.name}" onerror="this.src='https://via.placeholder.com/80?text=No+Image'">
+                        <div style="flex-grow: 1;">
+                            <p style="margin-bottom: 8px; font-size: 18px; font-weight: 600; color: var(--primary-dark);"><strong>Name:</strong> ${candidate.name}</p>
+                            <p style="margin-bottom: 0; font-size: 16px; color: #666;"><strong>Position:</strong> ${candidate.position}</p>
+                        </div>
+                        <button onclick="deleteCandidate('${candidate.id}')" style="background: linear-gradient(135deg, var(--error) 0%, #c82333 100%); margin-left: auto; width: auto; padding: 12px 16px; min-height: 44px; border-radius: 8px;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `;
+                    candidatesList.appendChild(candidateDiv);
+                });
+            } catch (error) {
+                candidatesList.innerHTML = '<p style="text-align: center; color: var(--error);">Error loading candidates: ' + error.message + '</p>';
+            }
+        }
+
+        async function deleteCandidate(candidateId) {
+            if (!supabaseClient) return;
+
+            if (!confirm("Are you sure you want to delete this candidate? All associated votes will also be permanently deleted. This cannot be undone.")) {
+                return;
+            }
+
+            try {
+                // Step 1: Delete all votes linked to the candidate from the 'votes' table
+                const { error: votesError } = await supabaseClient
+                    .from('votes')
+                    .delete()
+                    .eq('candidate_id', candidateId);
+
+                if (votesError) throw votesError;
+                
+                // Step 2: Delete the candidate from the 'candidates' table
+                const { error: candidateError } = await supabaseClient
+                    .from('candidates')
+                    .delete()
+                    .eq('id', candidateId);
+
+                if (candidateError) throw candidateError;
+                
+                alert('Candidate and all associated votes have been deleted successfully!');
+                await loadCandidates();
+                await refreshDashboard();
+            } catch (error) {
+                alert('Error deleting candidate: ' + error.message);
+                console.error('Deletion error:', error);
+            }
+        }
+
+        async function deleteVoter(voterId) {
+            if (!supabaseClient) return;
+
+            if (!confirm("Are you sure you want to delete this voter? This cannot be undone.")) {
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('voters')
+                    .delete()
+                    .eq('id', voterId);
+
+                if (error) throw error;
+                
+                alert('Voter deleted successfully!');
+                await loadVoters();
+                await refreshDashboard();
+            } catch (error) {
+                alert('Error deleting voter: ' + error.message);
+            }
+        }
+        
+        // Add voter function
+        async function addVoter() {
+            if (!supabaseClient) return;
+
+            const username = document.getElementById('voter-username').value.trim();
+            const password = document.getElementById('voter-password').value.trim();
+            const voterError = document.getElementById('voter-error');
+
+            if (!username || !password) {
+                voterError.textContent = 'Please provide username and password';
+                voterError.className = 'error';
+                voterError.style.opacity = '1';
+                return;
+            }
+
+            try {
+                // Check if username already exists
+                const { data: existingVoters, error: checkError } = await supabaseClient
+                    .from('voters')
+                    .select('username')
+                    .eq('username', username);
+
+                if (checkError) throw checkError;
+
+                if (existingVoters && existingVoters.length > 0) {
+                    voterError.textContent = 'Username already exists';
+                    voterError.className = 'error';
+                    voterError.style.opacity = '1';
+                    return;
+                }
+
+                const { error } = await supabaseClient
+                    .from('voters')
+                    .insert([{ 
+                        username, 
+                        password, 
+                        has_voted: false
+                    }]);
+
+                if (error) throw error;
+                
+                voterError.textContent = 'Voter added successfully!';
+                voterError.className = 'success';
+                voterError.style.opacity = '1';
+                
+                // Clear form
+                document.getElementById('voter-username').value = '';
+                document.getElementById('voter-password').value = '';
+                
+                await loadVoters();
+                await refreshDashboard();
+            } catch (error) {
+                voterError.textContent = 'Error adding voter: ' + error.message;
+                voterError.className = 'error';
+                voterError.style.opacity = '1';
+            }
+        }
+
+        async function loadVoters() {
+            if (!supabaseClient) return;
+
+            const votersList = document.getElementById('voters-list');
+            votersList.innerHTML = '<div class="loading">Loading voters...</div>';
+            
+            try {
+                const { data: voters, error } = await supabaseClient
+                    .from('voters')
+                    .select('*')
+                    .order('created_at', { ascending: true });
+
+                if (error) throw error;
+                
+                if (!voters || voters.length === 0) {
+                    votersList.innerHTML = '<p style="text-align: center; color: #666;">No voters registered yet.</p>';
+                    return;
+                }
+
+                votersList.innerHTML = '';
+                voters.forEach(voter => {
+                    const voterItem = document.createElement('div');
+                    voterItem.className = 'voter-item';
+                    const statusColor = voter.has_voted ? 'var(--success)' : 'var(--warning)';
+                    const statusIcon = voter.has_voted ? 'fas fa-check-circle' : 'fas fa-clock';
+                    voterItem.innerHTML = `
+                        <div style="flex-grow: 1;">
+                            <p style="margin-bottom: 8px; font-size: 18px; font-weight: 600; color: var(--primary-dark);"><strong>Username:</strong> ${voter.username}</p>
+                            <p style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;"><strong>Status:</strong> <span style="color: ${statusColor}; display: flex; align-items: center; gap: 5px;"><i class="${statusIcon}"></i> ${voter.has_voted ? 'Voted' : 'Pending'}</span></p>
+                        </div>
+                        <button onclick="deleteVoter('${voter.id}')" style="background: linear-gradient(135deg, var(--error) 0%, #c82333 100%); margin-left: auto; width: auto; padding: 12px 16px; min-height: 44px; border-radius: 8px;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `;
+                    votersList.appendChild(voterItem);
+                });
+            } catch (error) {
+                votersList.innerHTML = '<p style="text-align: center; color: var(--error);">Error loading voters: ' + error.message + '</p>';
+            }
+        }
+        
+        // Function to add a new admin
+        async function addAdmin() {
+            if (!supabaseClient) return;
+
+            const username = document.getElementById('new-admin-username').value.trim();
+            const password = document.getElementById('new-admin-password').value.trim();
+            const statusElement = document.getElementById('admin-add-status');
+
+            if (!username || !password) {
+                statusElement.textContent = 'Please enter both username and password.';
+                statusElement.className = 'error';
+                statusElement.style.opacity = '1';
+                return;
+            }
+
+            try {
+                // Check if username already exists
+                const { data: existingDirectors, error: checkError } = await supabaseClient
+                    .from('directors')
+                    .select('username')
+                    .eq('username', username);
+
+                if (checkError) throw checkError;
+
+                if (existingDirectors && existingDirectors.length > 0) {
+                    statusElement.textContent = 'Username already exists.';
+                    statusElement.className = 'error';
+                    statusElement.style.opacity = '1';
+                    return;
+                }
+
+                const { error } = await supabaseClient
+                    .from('directors')
+                    .insert([{ username, password }]);
+
+                if (error) throw error;
+
+                statusElement.textContent = 'Admin added successfully!';
+                statusElement.className = 'success';
+                statusElement.style.opacity = '1';
+                
+                // Clear the form
+                document.getElementById('new-admin-username').value = '';
+                document.getElementById('new-admin-password').value = '';
+                
+                await loadAdmins();
+            } catch (error) {
+                statusElement.textContent = 'Error adding admin: ' + error.message;
+                statusElement.className = 'error';
+                statusElement.style.opacity = '1';
+            }
+        }
+
+        // Function to load the list of admins
+        async function loadAdmins() {
+            if (!supabaseClient) return;
+
+            const adminsList = document.getElementById('admins-list');
+            adminsList.innerHTML = '<div class="loading">Loading admins...</div>';
+
+            try {
+                const { data: admins, error } = await supabaseClient
+                    .from('directors')
+                    .select('*')
+                    .order('created_at', { ascending: true });
+
+                if (error) throw error;
+
+                if (!admins || admins.length === 0) {
+                    adminsList.innerHTML = '<p style="text-align: center; color: #666;">No admins added yet.</p>';
+                    return;
+                }
+
+                adminsList.innerHTML = '';
+                admins.forEach(admin => {
+                    const adminDiv = document.createElement('div');
+                    adminDiv.className = 'voter-item';
+                    adminDiv.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <i class="fas fa-user-shield" style="font-size: 24px; color: var(--accent);"></i>
+                            <div>
+                                <p style="margin: 0; font-size: 18px; font-weight: 600; color: var(--primary-dark);"><strong>Username:</strong> ${admin.username}</p>
+                            </div>
+                        </div>
+                    `;
+                    adminsList.appendChild(adminDiv);
+                });
+            } catch (error) {
+                adminsList.innerHTML = '<p style="text-align: center; color: var(--error);">Error loading admins: ' + error.message + '</p>';
+            }
+        }
+        
+                async function updateStats() {
+            if (!supabaseClient) return;
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">Loading results...</div>';
+
+            try {
+                // Fetch all data
+                const { data: onlineVotes, error: onlineVotesError } = await supabaseClient
+                    .from('votes')
+                    .select('candidate_id');
+
+                if (onlineVotesError) throw onlineVotesError;
+
+                const { data: physicalVotes, error: physicalVotesError } = await supabaseClient
+                    .from('physical_votes')
+                    .select('votes'); // Select the jsonb column
+
+                if (physicalVotesError) throw physicalVotesError;
+                
+                const { data: candidates, error: candidatesError } = await supabaseClient
+                    .from('candidates')
+                    .select('*');
+
+                if (candidatesError) throw candidatesError;
+                
+                const { data: voters, error: votersError } = await supabaseClient
+                    .from('voters')
+                    .select('*');
+
+                if (votersError) throw votersError;
+
+                const registeredVoters = (voters ? voters.length : 0) + (physicalVotes ? physicalVotes.length : 0);
+                document.getElementById('total-voters').textContent = registeredVoters;
+
+                if (!candidates || candidates.length === 0) {
+                    resultsDiv.innerHTML = '<p style="text-align: center; color: #666;">No candidates available for results.</p>';
+                    return;
+                }
+                
+                // Map candidate names/positions to their ID for easy lookup
+                const candidateIdMap = new Map();
+                candidates.forEach(c => {
+                    // Use a unique key for each candidate (e.g., "Position_CandidateName")
+                    const key = `${c.position}_${c.name}`;
+                    candidateIdMap.set(key, c.id);
+                });
+
+                // Create a map to store total vote counts by candidate ID
+                const voteCounts = new Map();
+                candidates.forEach(c => voteCounts.set(c.id, 0));
+
+                // Process online votes (from 'votes' table)
+                onlineVotes.forEach(vote => {
+                    if (vote.candidate_id) {
+                        voteCounts.set(vote.candidate_id, (voteCounts.get(vote.candidate_id) || 0) + 1);
+                    }
+                });
+
+                // Process physical votes (from 'physical_votes' table)
+                physicalVotes.forEach(pVote => {
+                    if (pVote.votes) {
+                        for (const position in pVote.votes) {
+                            const candidateName = pVote.votes[position];
+                            const key = `${position}_${candidateName}`;
+                            const candidateId = candidateIdMap.get(key);
+                            if (candidateId) {
+                                voteCounts.set(candidateId, (voteCounts.get(candidateId) || 0) + 1);
+                            }
+                        }
+                    }
+                });
+                
+                // Get all unique positions
+                const positions = [...new Set(candidates.map(c => c.position))];
+                resultsDiv.innerHTML = '';
+
+                positions.forEach(position => {
+                    const positionDiv = document.createElement('div');
+                    positionDiv.style.marginBottom = '40px';
+                    positionDiv.style.padding = '25px';
+                    positionDiv.style.background = 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)';
+                    positionDiv.style.borderRadius = '16px';
+                    positionDiv.style.border = '2px solid var(--border)';
+                    positionDiv.innerHTML = `<h3 style="margin-bottom: 20px; color: var(--primary-dark); display: flex; align-items: center; gap: 10px;"><i class="fas fa-trophy" style="color: var(--accent);"></i> ${position}</h3>`;
+                    
+                    const candidatesForPosition = candidates.filter(c => c.position === position);
+                    const totalVotesForPosition = candidatesForPosition.reduce((sum, c) => sum + (voteCounts.get(c.id) || 0), 0);
+
+                    candidatesForPosition.forEach(candidate => {
+                        const votes = voteCounts.get(candidate.id) || 0;
+                        const percentage = totalVotesForPosition > 0 ? ((votes / totalVotesForPosition) * 100).toFixed(1) : 0;
+                        
+                        const resultBar = document.createElement('div');
+                        resultBar.style.margin = '15px 0';
+                        resultBar.style.padding = '15px';
+                        resultBar.style.background = 'rgba(59, 89, 152, 0.1)';
+                        resultBar.style.borderRadius = '12px';
+                        resultBar.style.border = '1px solid rgba(59, 89, 152, 0.2)';
+                        resultBar.style.position = 'relative';
+                        resultBar.style.overflow = 'hidden';
+                        
+                        resultBar.innerHTML = `
+                            <div style="position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(135deg, var(--accent) 0%, #2d4373 100%); width: ${percentage}%; opacity: 0.2; transition: width 0.5s ease;"></div>
+                            <div style="position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: 600; color: var(--primary-dark);">${candidate.name}</span>
+                                <span style="font-weight: 700; color: var(--accent);">${votes} votes (${percentage}%)</span>
+                            </div>
+                        `;
+                        
+                        positionDiv.appendChild(resultBar);
+                    });
+
+                    resultsDiv.appendChild(positionDiv);
+                });
+            } catch (error) {
+                resultsDiv.innerHTML = '<p style="text-align: center; color: var(--error);">Error loading results: ' + error.message + '</p>';
+                console.error('Results error:', error);
+            }
+        }
+
+        // Password toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const passwordInput = document.getElementById('director-password');
+            const togglePassword = document.getElementById('toggle-director-password');
+            
+            const newAdminPasswordInput = document.getElementById('new-admin-password');
+            const toggleNewAdminPassword = document.getElementById('toggle-new-admin-password');
+
+            if (togglePassword && passwordInput) {
+                togglePassword.addEventListener('click', function() {
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+            
+            if (toggleNewAdminPassword && newAdminPasswordInput) {
+                toggleNewAdminPassword.addEventListener('click', function() {
+                    const type = newAdminPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    newAdminPasswordInput.setAttribute('type', type);
+                    this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+
+            // Allow Enter key to login
+            document.getElementById('director-username')?.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    loginDirector();
+                }
+            });
+
+            document.getElementById('director-password')?.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    loginDirector();
+                }
+            });
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                sidebar.classList.remove('show');
+                sidebarOverlay.classList.remove('show');
+                if (currentUser) {
+                    sidebar.classList.add('show');
+                    mainContent.classList.add('with-sidebar');
+                }
+            } else {
+                if (currentUser) {
+                    mainContent.classList.remove('with-sidebar');
+                }
+            }
+        });
+
+        // Auto-refresh dashboard every 30 seconds when active
+        let dashboardInterval = null;
+        
+        function startDashboardRefresh() {
+            if (dashboardInterval) clearInterval(dashboardInterval);
+            dashboardInterval = setInterval(async () => {
+                if (currentUser && document.getElementById('home-section').style.display !== 'none') {
+                    await refreshDashboard();
+                }
+            }, 30000);
+        }
+
+        function stopDashboardRefresh() {
+            if (dashboardInterval) {
+                clearInterval(dashboardInterval);
+                dashboardInterval = null;
+            }
+        }
+
+        // Start auto-refresh when logged in
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user navigates to home section
+            const homeTab = document.querySelector('.tab-link[data-tab="home-section"]');
+            if (homeTab) {
+                homeTab.addEventListener('click', startDashboardRefresh);
+            }
+        });
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible' && currentUser) {
+                startDashboardRefresh();
+            } else {
+                stopDashboardRefresh();
+            }
+        });
+
+        // Touch gestures for mobile
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        document.addEventListener('touchstart', function(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchend', function(e) {
+            if (!currentUser) return;
+            
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const diffX = touchStartX - touchEndX;
+            const diffY = touchStartY - touchEndY;
+
+            // Swipe right to open sidebar (only if swipe starts from left edge)
+            if (Math.abs(diffX) > Math.abs(diffY) && diffX < -50 && touchStartX < 50) {
+                sidebar.classList.add('show');
+                sidebarOverlay.classList.add('show');
+            }
+            
+            // Swipe left to close sidebar
+            if (Math.abs(diffX) > Math.abs(diffY) && diffX > 50 && sidebar.classList.contains('show')) {
+                sidebar.classList.remove('show');
+                sidebarOverlay.classList.remove('show');
+            }
+        }, { passive: true });
+
+        // Prevent zoom on double tap for iOS
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        // Add loading states to buttons
+        function setButtonLoading(buttonElement, loading = true) {
+            if (loading) {
+                buttonElement.disabled = true;
+                buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            } else {
+                buttonElement.disabled = false;
+            }
+        }
+
+        // Enhanced error handling
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+            // You could show a user-friendly error message here
+        });
+
+        // Service worker registration for better mobile performance (optional)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                // Service worker code would go here for offline functionality
+                console.log('Service Worker support detected');
+            });
+        }
+
+        // Initialize touch feedback
+        function addTouchFeedback() {
+            const interactiveElements = document.querySelectorAll('button, .tab-link, .nav-toggle');
+            
+            interactiveElements.forEach(element => {
+                element.addEventListener('touchstart', function() {
+                    this.style.transform = 'scale(0.95)';
+                }, { passive: true });
+                
+                element.addEventListener('touchend', function() {
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 150);
+                }, { passive: true });
+            });
+        }
+
+        // Call touch feedback initialization
+        document.addEventListener('DOMContentLoaded', addTouchFeedback);
+    </script>
+</body>
+</html>
